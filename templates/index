@@ -1,0 +1,134 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tallinn Apartment Price Predictor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; } /* Example font */
+        @import url('[https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap)');
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg">
+        <h1 class="text-2xl font-bold mb-6 text-center text-gray-700">Apartment Price Estimator (Tallinn)</h1>
+
+        <form id="prediction-form" class="space-y-4">
+            <div>
+                <label for="Size" class="block text-sm font-medium text-gray-700">Size (m²):</label>
+                <input type="number" id="Size" name="Size" required min="10" step="0.1"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+
+            <div>
+                <label for="Rooms" class="block text-sm font-medium text-gray-700">Number of Rooms:</label>
+                <input type="number" id="Rooms" name="Rooms" required min="1" step="1"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+
+             <div>
+                <label for="Year" class="block text-sm font-medium text-gray-700">Year Built:</label>
+                <input type="number" id="Year" name="Year" required min="1700" max="2024" step="1"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+
+            <div>
+                <label for="Area" class="block text-sm font-medium text-gray-700">District (Area):</label>
+                <select id="Area" name="Area" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <option value="" disabled selected>Select District</option>
+                    <option value="Kesklinn">Kesklinn</option>
+                    <option value="Lasnamäe">Lasnamäe</option>
+                    <option value="Mustamäe">Mustamäe</option>
+                    <option value="Põhja-Tallinn">Põhja-Tallinn</option>
+                    <option value="Kristiine">Kristiine</option>
+                    <option value="Haabersti">Haabersti</option>
+                    <option value="Nõmme">Nõmme</option>
+                    <option value="Pirita">Pirita</option>
+                    </select>
+            </div>
+
+            <div>
+                <label for="Apt_Floor" class="block text-sm font-medium text-gray-700">Apartment Floor:</label>
+                <input type="number" id="Apt_Floor" name="Apt_Floor" required min="1" step="1"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+
+            <div>
+                <label for="Total_Floors" class="block text-sm font-medium text-gray-700">Total Floors in Building:</label>
+                <input type="number" id="Total_Floors" name="Total_Floors" required min="1" step="1"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+
+            <div>
+                <button type="submit"
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Estimate Price
+                </button>
+            </div>
+        </form>
+
+        <div id="result" class="mt-6 text-center text-lg font-semibold text-gray-800">
+            </div>
+         <div id="error-message" class="mt-4 text-center text-sm font-medium text-red-600">
+            </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('prediction-form');
+        const resultDiv = document.getElementById('result');
+        const errorDiv = document.getElementById('error-message');
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Prevent default form submission
+            resultDiv.textContent = 'Calculating...'; // Show loading state
+            errorDiv.textContent = ''; // Clear previous errors
+
+            // Basic validation: Ensure Apt_Floor <= Total_Floors
+            const aptFloor = parseInt(document.getElementById('Apt_Floor').value);
+            const totalFloors = parseInt(document.getElementById('Total_Floors').value);
+
+            if (aptFloor > totalFloors) {
+                errorDiv.textContent = 'Error: Apartment floor cannot be greater than total floors.';
+                resultDiv.textContent = '';
+                return; // Stop submission
+            }
+
+
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            // Convert relevant fields to numbers if necessary (Flask side handles it too)
+            data.Size = parseFloat(data.Size);
+            data.Rooms = parseInt(data.Rooms);
+            data.Year = parseInt(data.Year);
+            data.Apt_Floor = parseInt(data.Apt_Floor);
+            data.Total_Floors = parseInt(data.Total_Floors);
+
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    resultDiv.textContent = `Estimated Price: €${result.prediction.toLocaleString('en-US')}`; // Format price
+                } else {
+                    resultDiv.textContent = ''; // Clear loading/previous result
+                    errorDiv.textContent = `Error: ${result.error || 'Prediction failed.'}`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.textContent = '';
+                errorDiv.textContent = 'An unexpected error occurred. Please try again.';
+            }
+        });
+    </script>
+</body>
+</html>
